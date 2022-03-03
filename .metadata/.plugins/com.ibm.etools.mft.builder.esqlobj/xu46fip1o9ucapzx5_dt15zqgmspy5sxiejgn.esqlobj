@@ -1,0 +1,27 @@
+CREATE COMPUTE MODULE Echo_Compute
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		DECLARE retVal BOOLEAN FALSE;
+		-- SET OutputLocalEnvironment = InputLocalEnvironment;
+	    SET OutputRoot = InputRoot;
+	    
+		IF EXISTS(Environment.ReplyIdentifier[]) THEN
+		ELSE
+		END IF;
+				
+		IF (InputLocalEnvironment.HTTP.Input.Path.Segment[<] = 'final') THEN
+			SET OutputLocalEnvironment.Destination.HTTP.RequestIdentifier = InputLocalEnvironment.Destination.HTTP.RequestIdentifier;
+			SET retVal = TRUE;
+		ELSEIF (Environment.Final = 'final') THEN
+			SET OutputLocalEnvironment.Destination.HTTP.RequestIdentifier = CAST (Environment.ReplyIdentifier AS BLOB);
+			SET retVal = TRUE;
+		ELSE
+			SET Environment.Final = 'final';
+			SET Environment.ReplyIdentifier = CAST(InputLocalEnvironment.Destination.HTTP.RequestIdentifier AS CHARACTER);
+			SET OutputLocalEnvironment.Destination.HTTP.RequestLine.RequestURI = '/Echo/acct/' || InputLocalEnvironment.HTTP.Input.Path.Segment[2] || '/final';
+			PROPAGATE TO TERMINAL 1;
+		END IF;
+
+		RETURN retVal;
+	END;
+END MODULE;

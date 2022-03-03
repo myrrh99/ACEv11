@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workingSetManager>
+<workingSet editPageId="com.ibm.etools.mft.navigator.BrokerWorkingSet.AppLib" factoryID="org.eclipse.ui.internal.WorkingSetFactory" id="1646288067319_1" label="[HTTPEcho]" name="[HTTPEcho]">
+<item factoryID="org.eclipse.ui.internal.model.ResourceFactory" path="/HTTPEcho" type="4"/>
+</workingSet>
+<workingSet aggregate="true" factoryID="org.eclipse.ui.internal.WorkingSetFactory" id="1646287963360_0" label="Window Working Set" name="Aggregate for window 1646287963360"/>
+</workingSetManager>
