@@ -5,6 +5,9 @@ $MQSI Author=Elmer Senson MQSI$
 
 DECLARE addSuffix EXTERNAL BOOLEAN FALSE;
 
+
+/* added comment */
+
 CREATE COMPUTE MODULE Echo_Compute
 	CREATE FUNCTION Main() RETURNS BOOLEAN
 	BEGIN
