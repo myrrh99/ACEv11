@@ -1,0 +1,131 @@
+BROKER SCHEMA ExceptionHandler
+
+
+CREATE FUNCTION parseExceptionList(IN aRef REFERENCE) RETURNS CHARACTER
+BEGIN
+	DECLARE Message CHARACTER '';
+	DECLARE lMsg CHARACTER '';
+	DECLARE ptrExc REFERENCE TO aRef.*[1];
+	DECLARE iCount INTEGER;
+	DECLARE cParm CHARACTER '';
+
+	WHILE ptrExc.Number IS NOT NULL DO
+		SET cParm = FIELDNAME(ptrExc);
+		SET lMsg = '[' || cParm || '(' || CAST(ptrExc.Number AS CHARACTER) || '):' || ptrExc.Text;
+		SET iCount = 0;
+		FOR iRef AS ptrExc.Insert[] DO
+			SET iCount = iCount + 1;
+			SET cParm = '&'||CAST(iCount AS CHARACTER);
+			
+			IF CONTAINS(lMsg,cParm) THEN
+				SET lMsg = REPLACE(lMsg,cParm,iRef.Text);
+			ELSE
+				SET lMsg = lMsg || '-' || iRef.Text;
+			END IF;
+		END FOR;
+		SET lMsg = lMsg || ']';
+
+		SET Message = Message || lMsg;
+		MOVE ptrExc LASTCHILD;
+	END WHILE;
+
+	RETURN Message;
+END;
+
+CREATE FUNCTION getUserException(IN aRef REFERENCE, INOUT aStr CHARACTER) RETURNS CHARACTER
+BEGIN
+	DECLARE usrEx BOOLEAN FALSE;
+	DECLARE ptrExc REFERENCE TO aRef.*[1];
+	DECLARE wrkStr CHARACTER NULL;
+	
+	WHILE ((ptrExc.Number IS NOT NULL) AND NOT usrEx) DO
+		SET usrEx = (FIELDNAME(ptrExc) = 'UserException');
+
+		IF usrEx THEN
+			SET aStr = ptrExc.Insert[2].Text;
+			SET wrkStr = ptrExc.Insert[1].Text;
+		ELSE
+			MOVE ptrExc LASTCHILD;
+		END IF;
+	END WHILE;
+	
+	RETURN wrkStr;
+END;
+
+CREATE FUNCTION getFinalExceptions(IN aRef REFERENCE) RETURNS CHARACTER
+BEGIN
+	DECLARE Message CHARACTER '';
+	DECLARE lMsg CHARACTER '';
+	DECLARE ptrExc REFERENCE TO aRef.*[1];
+	DECLARE recEx BOOLEAN FALSE;
+	DECLARE iCount INTEGER;
+	DECLARE cParm CHARACTER '';
+
+	WHILE ptrExc.Number IS NOT NULL DO
+		SET cParm = FIELDNAME(ptrExc);
+		SET recEx = (cParm = 'RecoverableException');
+		SET lMsg = '[' || cParm || '(' || CAST(ptrExc.Number AS CHARACTER) || '):' || ptrExc.Text;
+		SET iCount = 0;
+		FOR iRef AS ptrExc.Insert[] DO
+			SET iCount = iCount + 1;
+			SET cParm = '&'||CAST(iCount AS CHARACTER);
+			
+			IF CONTAINS(lMsg,cParm) THEN
+				SET lMsg = REPLACE(lMsg,cParm,iRef.Text);
+			ELSE
+				SET lMsg = lMsg || '-' || iRef.Text;
+			END IF;
+		END FOR;
+		SET lMsg = lMsg || ']';
+
+		IF NOT recEx THEN
+			SET Message = Message || lMsg;
+		END IF;
+
+		MOVE ptrExc LASTCHILD;
+	END WHILE;
+	
+	IF (LENGTH(Message) = 0) THEN
+		SET Message = lMsg;
+	END IF; 
+
+	RETURN Message;
+END;
+
+CREATE FUNCTION parseFaultXML(IN aMsg CHARACTER) RETURNS CHARACTER
+BEGIN
+	DECLARE Message CHARACTER aMsg;
+	DECLARE oMsg CHARACTER 'Unknown Error';
+
+	IF (CONTAINS(aMsg,'</CICSFault>')) THEN
+		SET Message = LEFT(aMsg,POSITION('</CICSFault>' IN Message)-1);
+		SET Message = SUBSTRING(Message FROM (POSITION ('>' IN Message REPEAT -1) + 1));
+		SET oMsg = Message;
+	ELSEIF (CONTAINS(aMsg,'</faultcode>')) THEN
+		SET Message = LEFT(aMsg,POSITION('</faultcode>' IN Message)-1);
+		SET Message = SUBSTRING(Message FROM (POSITION ('>' IN Message REPEAT -1) + 1));
+		SET oMsg = COALESCE(Message,'');
+		SET Message = LEFT(aMsg,POSITION('</faultstring>' IN Message)-1);
+		SET Message = SUBSTRING(Message FROM (POSITION ('>' IN Message REPEAT -1) + 1));
+		SET oMsg = oMsg || COALESCE(': ' ||Message,'');
+		SET Message = LEFT(Message,POSITION('</faultactor>' IN Message)-1);
+		SET Message = SUBSTRING(Message FROM (POSITION ('>' IN Message REPEAT -1) + 1));
+		SET oMsg = COALESCE('('||Message||') ','') || oMsg;
+	ELSEIF (CONTAINS(aMsg,'</Code>')) THEN
+		SET Message = LEFT(aMsg,POSITION('</Code>' IN Message)-1);
+		SET Message = SUBSTRING(Message FROM (POSITION ('<Code>' IN Message REPEAT -1) + 6));
+		SET oMsg = COALESCE(Message,'');
+		SET Message = LEFT(aMsg,POSITION('</Reason>' IN Message)-1);
+		SET Message = SUBSTRING(Message FROM (POSITION ('<Reason>' IN Message REPEAT -1) + 8));
+		SET oMsg = oMsg || COALESCE(': ' ||Message,'');
+		SET Message = LEFT(Message,POSITION('<Node>' IN Message)-1);
+		SET Message = SUBSTRING(Message FROM (POSITION ('<Node>' IN Message REPEAT -1) + 6));
+		SET oMsg = COALESCE('('||Message||') ','') || oMsg;
+	ELSEIF (CONTAINS(Message,'</title>')) THEN
+		SET Message = LEFT(Message,POSITION('</title>' IN Message)-1);
+		SET Message = SUBSTRING(Message FROM (POSITION ('>' IN Message REPEAT -1) + 1));
+	END IF;
+
+	RETURN oMsg;
+END;
+

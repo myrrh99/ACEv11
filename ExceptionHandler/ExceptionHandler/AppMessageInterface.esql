@@ -1,0 +1,20 @@
+BROKER SCHEMA ExceptionHandler
+
+DECLARE dbase SHARED CHARACTER 'CUSTOM';
+DECLARE dbschema SHARED CHARACTER 'MBCUSDV';
+DECLARE sql_statement SHARED CHARACTER 'SELECT ID, MESSAGE_TYPE_ID, CODE, TITLE, DETAIL FROM {dbschema}.APP_MESSAGE WHERE CODE = ?';
+
+CREATE PROCEDURE InitializeEH (IN oraname CHARACTER, IN oraschema CHARACTER) RETURNS BOOLEAN
+BEGIN
+	SET dbase = oraname;
+	SET sql_statement = REPLACE(sql_statement,'{dbschema}',oraschema);
+	
+	RETURN TRUE;
+END;
+
+CREATE FUNCTION getAppMessage(IN code CHARACTER, IN aRef REFERENCE) RETURNS BOOLEAN
+BEGIN
+	-- Read ERROR from APP_MESSAGE
+	SET aRef.AMResult[] = PASSTHRU ( sql_statement TO Database.{dbase} VALUES (code) );
+	RETURN (CARDINALITY(aRef.AMResult[]) > 0);
+END;
